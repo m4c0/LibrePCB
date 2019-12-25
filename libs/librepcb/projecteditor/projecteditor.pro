@@ -10,7 +10,7 @@ TARGET = librepcbprojecteditor
 # Use common project definitions
 include(../../../common.pri)
 
-QT += core widgets xml sql printsupport
+QT += core widgets opengl xml sql printsupport
 
 CONFIG += staticlib
 
@@ -18,6 +18,7 @@ INCLUDEPATH += \
     ../../ \
     ../../type_safe/include \
     ../../type_safe/external/debug_assert \
+    /usr/include/oce \
 
 RESOURCES += \
     ../../../img/images.qrc \

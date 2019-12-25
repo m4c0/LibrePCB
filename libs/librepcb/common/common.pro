@@ -26,6 +26,7 @@ INCLUDEPATH += \
     ../../sexpresso \
     ../../type_safe/include \
     ../../type_safe/external/debug_assert \
+    /usr/include/oce \
 
 RESOURCES += \
     ../../../img/images.qrc \
@@ -112,6 +113,7 @@ SOURCES += \
     network/networkrequest.cpp \
     network/networkrequestbase.cpp \
     network/repository.cpp \
+    occ/opencascadeview.cpp \
     pnp/pickplacecsvwriter.cpp \
     pnp/pickplacedata.cpp \
     signalrole.cpp \
@@ -252,6 +254,7 @@ HEADERS += \
     network/networkrequestbase.h \
     network/repository.h \
     norms.h \
+    occ/opencascadeview.h \
     pnp/pickplacecsvwriter.h \
     pnp/pickplacedata.h \
     scopeguard.h \

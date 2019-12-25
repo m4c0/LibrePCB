@@ -46,7 +46,22 @@ LIBS += \
     -llibrepcbcommon \
     -lsexpresso \
     -lclipper \
-    -lquazip -lz
+    -lquazip -lz \
+    -lTKernel   \
+    -lTKMath    \
+    -lTKG3d     \
+    -lTKBRep    \
+    -lTKGeomBase\
+    -lTKGeomAlgo\
+    -lTKTopAlgo \
+    -lTKPrim    \
+    -lTKBO      \
+    -lTKBool    \
+    -lTKOffset  \
+    -lTKService \
+    -lTKV3d     \
+    -lTKOpenGl  \
+    -lTKFillet
 
 INCLUDEPATH += \
     ../../libs \
