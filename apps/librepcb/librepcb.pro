@@ -61,7 +61,9 @@ LIBS += \
     -lTKService \
     -lTKV3d     \
     -lTKOpenGl  \
-    -lTKFillet
+    -lTKFillet  \
+    -lTKSTEP    \
+    -lTKXCAF -lTKXCAFSchema
 
 INCLUDEPATH += \
     ../../libs \

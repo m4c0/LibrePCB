@@ -47,8 +47,14 @@
 #include <Geom_ConicalSurface.hxx>
 #include <Geom_CylindricalSurface.hxx>
 #include <Geom_ToroidalSurface.hxx>
+#include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_Writer.hxx>
 #include <TColgp_Array1OfPnt2d.hxx>
+#include <TDocStd_Document.hxx>
 #include <TopExp_Explorer.hxx>
+#include <XCAFApp_Application.hxx>
+#include <XCAFDoc_DocumentTool.hxx>
+#include <XCAFDoc_ShapeTool.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Elips.hxx>
 #include <gp_Lin2d.hxx>
@@ -68,6 +74,7 @@
 #include <librepcb/project/circuit/circuit.h>
 #include <librepcb/project/project.h>
 
+#include <BRepBuilderAPI.hxx>
 #include <BRepLib.hxx>
 #include <TopExp.hxx>
 #include <TopoDS.hxx>
@@ -103,8 +110,12 @@ BoardShape3D::~BoardShape3D() noexcept {
  ******************************************************************************/
 
 void BoardShape3D::addToView(OpenCascadeView& view) noexcept {
-  // outlines
   TopoDS_Shape boardShape;
+  TopoDS_Shape viaShape;
+  TopoDS_Shape topCopperShape;
+  TopoDS_Shape bottomCopperShape;
+
+  // board outline
   {
     BoardClipperPathGenerator gen(mBoard, PositiveLength(5000));
     gen.addBoardOutline();
@@ -145,111 +156,142 @@ void BoardShape3D::addToView(OpenCascadeView& view) noexcept {
         }
         // plating
         {
-          BRepPrimAPI_MakeCylinder cylinderMaker1(
-              gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
-                            pad->getPosition().getY().toMm(), -0.8),
-                     gp_Dir(0, 0, 1)),
-              (pad->getLibPad().getDrillDiameter()->toMm() / 2) + 0.035, 1.6);
-          TopoDS_Shape cylinder = cylinderMaker1.Shape();
+          // BRepPrimAPI_MakeCylinder cylinderMaker1(
+          //    gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
+          //                  pad->getPosition().getY().toMm(), -0.8),
+          //           gp_Dir(0, 0, 1)),
+          //    (pad->getLibPad().getDrillDiameter()->toMm() / 2) + 0.035, 1.6);
+          // viaShape = BRepAlgoAPI_Fuse(viaShape, cylinderMaker1.Shape());
 
-          BRepPrimAPI_MakeCylinder cylinderMaker2(
-              gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
-                            pad->getPosition().getY().toMm(), -0.8),
-                     gp_Dir(0, 0, -1)),
-              pad->getLibPad().getWidth()->toMm() / 2, 0.035);
-          cylinder = BRepAlgoAPI_Fuse(cylinder, cylinderMaker2.Shape());
-
-          BRepPrimAPI_MakeCylinder cylinderMaker3(
-              gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
-                            pad->getPosition().getY().toMm(), 0.8),
-                     gp_Dir(0, 0, 1)),
-              pad->getLibPad().getWidth()->toMm() / 2, 0.035);
-          cylinder = BRepAlgoAPI_Fuse(cylinder, cylinderMaker3.Shape());
-
-          BRepPrimAPI_MakeCylinder cylinderMaker(
-              gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
-                            pad->getPosition().getY().toMm(), -0.9),
-                     gp_Dir(0, 0, 1)),
-              (pad->getLibPad().getDrillDiameter()->toMm() / 2), 1.8);
-          BRepAlgoAPI_Cut cutMaker(cylinder, cylinderMaker.Shape());
-          Handle(AIS_Shape) anAisSolid = new AIS_Shape(cutMaker.Shape());
-          anAisSolid->SetColor(Quantity_NOC_GOLD);
-          view.getContext()->Display(anAisSolid, Standard_True);
+          // BRepPrimAPI_MakeCylinder cylinderMaker2(
+          //    gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
+          //                  pad->getPosition().getY().toMm(), -0.8),
+          //           gp_Dir(0, 0, -1)),
+          //    pad->getLibPad().getWidth()->toMm() / 2, 0.035);
+          // cylinder = BRepAlgoAPI_Fuse(cylinder, cylinderMaker2.Shape());
+          //
+          // BRepPrimAPI_MakeCylinder cylinderMaker3(
+          //    gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
+          //                  pad->getPosition().getY().toMm(), 0.8),
+          //           gp_Dir(0, 0, 1)),
+          //    pad->getLibPad().getWidth()->toMm() / 2, 0.035);
+          // cylinder = BRepAlgoAPI_Fuse(cylinder, cylinderMaker3.Shape());
+          //
+          // BRepPrimAPI_MakeCylinder cylinderMaker(
+          //    gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
+          //                  pad->getPosition().getY().toMm(), -0.9),
+          //           gp_Dir(0, 0, 1)),
+          //    (pad->getLibPad().getDrillDiameter()->toMm() / 2), 1.8);
+          // BRepAlgoAPI_Cut cutMaker(cylinder, cylinderMaker.Shape());
+          //
+          // Handle(AIS_Shape) anAisSolid = new AIS_Shape(cutMaker.Shape());
+          // anAisSolid->SetColor(Quantity_NOC_GOLD);
+          // view.getContext()->Display(anAisSolid, Standard_True);
         }
       } else {
-        qreal dir = (pad->getLibPad().getBoardSide() ==
-                     library::FootprintPad::BoardSide::TOP)
-                        ? 1
-                        : -1;
-        if (device->getIsMirrored()) dir *= -1;
-        BRepPrimAPI_MakeCylinder cylinderMaker(
-            gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
-                          pad->getPosition().getY().toMm(), 0.8 * dir),
-                   gp_Dir(0, 0, dir)),
-            pad->getLibPad().getWidth()->toMm() / 2, 0.035);
-        Handle(AIS_Shape) anAisSolid = new AIS_Shape(cylinderMaker.Shape());
-        anAisSolid->SetColor(Quantity_NOC_GOLD);
-        view.getContext()->Display(anAisSolid, Standard_True);
+        // qreal dir = (pad->getLibPad().getBoardSide() ==
+        //             library::FootprintPad::BoardSide::TOP)
+        //                ? 1
+        //                : -1;
+        // if (device->getIsMirrored()) dir *= -1;
+        // BRepPrimAPI_MakeCylinder cylinderMaker(
+        //    gp_Ax2(gp_Pnt(pad->getPosition().getX().toMm(),
+        //                  pad->getPosition().getY().toMm(), 0.8 * dir),
+        //           gp_Dir(0, 0, dir)),
+        //    pad->getLibPad().getWidth()->toMm() / 2, 0.035);
+        // Handle(AIS_Shape) anAisSolid = new AIS_Shape(cylinderMaker.Shape());
+        // anAisSolid->SetColor(Quantity_NOC_GOLD);
+        // view.getContext()->Display(anAisSolid, Standard_True);
       }
     }
   }
 
-  Handle(AIS_Shape) anAisSolid = new AIS_Shape(boardShape);
-  anAisSolid->SetColor(Quantity_NOC_DARKGREEN);
-  view.getContext()->Display(anAisSolid, Standard_True);
+  Handle(AIS_Shape) boardShapeSolid = new AIS_Shape(boardShape);
+  boardShapeSolid->SetColor(Quantity_NOC_DARKGREEN);
+  view.getContext()->Display(boardShapeSolid, Standard_True);
+
+  Handle(AIS_Shape) viaShapeSolid = new AIS_Shape(viaShape);
+  viaShapeSolid->SetColor(Quantity_NOC_GOLD);
+  view.getContext()->Display(viaShapeSolid, Standard_True);
+
+  BRep_Builder    aB;
+  TopoDS_Compound aResComp;
+  aB.MakeCompound(aResComp);
+
+  // The arguments order is: where to add, what to add.
+  aB.Add(aResComp, boardShape);
 
   // traces
-  foreach (const BI_NetSegment* netsegment, mBoard.getNetSegments()) {
-    foreach (const BI_NetLine* netline, netsegment->getNetLines()) {
-      qreal dir  = netline->getLayer().isTopLayer() ? 1 : -1;
-      Point p1   = netline->getStartPoint().getPosition();
-      Point p2   = netline->getEndPoint().getPosition();
-      Path  path = Path::obround(p1, p2, netline->getWidth());
-      BRepBuilderAPI_MakePolygon aPolygon;
-      foreach (const Vertex& vertex, path.getVertices()) {
-        aPolygon.Add(gp_Pnt(vertex.getPos().getX().toMm(),
-                            vertex.getPos().getY().toMm(), 0.8 * dir));
-      }
-      aPolygon.Close();
-      TopoDS_Wire  wire = aPolygon.Wire();
-      TopoDS_Face  face = BRepBuilderAPI_MakeFace(wire);
-      TopoDS_Shape shape =
-          BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 0.035 * dir));
+  // foreach (const BI_NetSegment* netsegment, mBoard.getNetSegments()) {
+  //  foreach (const BI_NetLine* netline, netsegment->getNetLines()) {
+  //    qreal dir  = netline->getLayer().isTopLayer() ? 1 : -1;
+  //    Point p1   = netline->getStartPoint().getPosition();
+  //    Point p2   = netline->getEndPoint().getPosition();
+  //    Path  path = Path::obround(p1, p2, netline->getWidth());
+  //    BRepBuilderAPI_MakePolygon aPolygon;
+  //    foreach (const Vertex& vertex, path.getVertices()) {
+  //      aPolygon.Add(gp_Pnt(vertex.getPos().getX().toMm(),
+  //                          vertex.getPos().getY().toMm(), 0.8 * dir));
+  //    }
+  //    aPolygon.Close();
+  //    TopoDS_Wire  wire = aPolygon.Wire();
+  //    TopoDS_Face  face = BRepBuilderAPI_MakeFace(wire);
+  //    TopoDS_Shape shape =
+  //        BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 0.035 * dir));
+  //    //Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
+  //    //anAisSolid->SetColor(Quantity_NOC_GOLD);
+  //    //view.getContext()->Display(anAisSolid, Standard_True);
+  //  }
+  //}
+
+  QList<NetSignal*> netsignals =
+      mBoard.getProject().getCircuit().getNetSignals().values();
+  netsignals.append(nullptr);
+  foreach (const NetSignal* netsignal, netsignals) {
+    BoardClipperPathGenerator gen(mBoard, PositiveLength(5000));
+    gen.addCopper(GraphicsLayer::sTopCopper, netsignal);
+    for (const ClipperLib::Path& path : gen.getPaths()) {
+      TopoDS_Face face = BRepBuilderAPI_MakeFace(
+          clipperPathToPolygon(path, Length::fromMm(0.8)));
+      TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 0.035));
       Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
       anAisSolid->SetColor(Quantity_NOC_GOLD);
       view.getContext()->Display(anAisSolid, Standard_True);
+
+      aB.Add(aResComp, shape);
     }
   }
 
-  // QList<NetSignal*> netsignals =
-  //    mBoard.getProject().getCircuit().getNetSignals().values();
-  // netsignals.append(nullptr);
-  // foreach (const NetSignal* netsignal, netsignals) {
-  //  BoardClipperPathGenerator gen(mBoard, PositiveLength(5000));
-  //  gen.addCopper(GraphicsLayer::sTopCopper, netsignal);
-  //  for (const ClipperLib::Path& path : gen.getPaths()) {
-  //    TopoDS_Face face = BRepBuilderAPI_MakeFace(
-  //        clipperPathToPolygon(path, Length::fromMm(0.8)));
-  //    TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 0.035));
-  //    Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
-  //    anAisSolid->SetColor(Quantity_NOC_GOLD);
-  //    view.getContext()->Display(anAisSolid, Standard_True);
-  //  }
-  //}
-
   // traces bottom
-  // foreach (const NetSignal* netsignal, netsignals) {
-  //  BoardClipperPathGenerator gen(mBoard, PositiveLength(5000));
-  //  gen.addCopper(GraphicsLayer::sBotCopper, netsignal);
-  //  for (const ClipperLib::Path& path : gen.getPaths()) {
-  //    TopoDS_Face face = BRepBuilderAPI_MakeFace(
-  //        clipperPathToPolygon(path, Length::fromMm(-0.8)));
-  //    TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, -0.035));
-  //    Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
-  //    anAisSolid->SetColor(Quantity_NOC_GOLD);
-  //    view.getContext()->Display(anAisSolid, Standard_True);
-  //  }
-  //}
+  foreach (const NetSignal* netsignal, netsignals) {
+    BoardClipperPathGenerator gen(mBoard, PositiveLength(5000));
+    gen.addCopper(GraphicsLayer::sBotCopper, netsignal);
+    for (const ClipperLib::Path& path : gen.getPaths()) {
+      TopoDS_Face face = BRepBuilderAPI_MakeFace(
+          clipperPathToPolygon(path, Length::fromMm(-0.8)));
+      TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, -0.035));
+      Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
+      anAisSolid->SetColor(Quantity_NOC_GOLD);
+      view.getContext()->Display(anAisSolid, Standard_True);
+
+      aB.Add(aResComp, shape);
+    }
+  }
+
+  auto app = XCAFApp_Application::GetApplication();
+  Handle(TDocStd_Document) doc;
+  app->NewDocument("MDTV-XCAF", doc);
+  auto assy       = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
+  auto assy_label = assy->NewShape();
+  BRepBuilderAPI::Precision(1.0e-6);
+
+  assy->AddShape(aResComp);
+
+  STEPCAFControl_Writer aWriter;
+  aWriter.SetColorMode(Standard_True);
+  aWriter.SetNameMode(Standard_True);
+  aWriter.Transfer(doc, STEPControl_AsIs);
+  aWriter.Write("/home/urban/test.stp");
 }
 
 /*******************************************************************************
