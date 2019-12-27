@@ -47,7 +47,9 @@
 #include <Geom_ConicalSurface.hxx>
 #include <Geom_CylindricalSurface.hxx>
 #include <Geom_ToroidalSurface.hxx>
+#include <STEPCAFControl_Reader.hxx>
 #include <STEPCAFControl_Writer.hxx>
+#include <STEPControl_Reader.hxx>
 #include <STEPControl_Writer.hxx>
 #include <TColgp_Array1OfPnt2d.hxx>
 #include <TDocStd_Document.hxx>
@@ -63,6 +65,7 @@
 #include <librepcb/common/graphics/graphicslayer.h>
 #include <librepcb/common/occ/opencascadeview.h>
 #include <librepcb/library/pkg/footprintpad.h>
+#include <librepcb/library/pkg/package.h>
 #include <librepcb/project/boards/board.h>
 #include <librepcb/project/boards/drc/boardclipperpathgenerator.h>
 #include <librepcb/project/boards/items/bi_device.h>
@@ -138,8 +141,46 @@ void BoardShape3D::addToView(OpenCascadeView& view) noexcept {
     boardShape = cutMaker.Shape();
   }
 
+  TopoDS_Shape resistor, lqfp32;
+  {
+    STEPControl_Reader reader;
+    reader.ReadFile("/home/urban/tmp/R_0603_1608Metric.step");
+    reader.TransferRoots();
+    resistor = reader.OneShape();
+  }
+
+  {
+    STEPControl_Reader reader;
+    reader.ReadFile("/home/urban/tmp/LQFP-32_7x7mm_P0.8mm.step");
+    reader.TransferRoots();
+    lqfp32 = reader.OneShape();
+  }
+
   // pads
   foreach (const BI_Device* device, mBoard.getDeviceInstances()) {
+    tl::optional<TopoDS_Shape> model;
+    QString pkg = *device->getLibPackage().getNames().getDefaultValue();
+    if (pkg.contains("(0603)")) {
+      model = resistor;
+    } else if (pkg.contains("LQFP")) {
+      model = lqfp32;
+    }
+
+    if (model) {
+      gp_Trsf t1;
+      t1.SetRotation(gp_Ax1(), device->getRotation().toRad());
+      BRepBuilderAPI_Transform tt1(*model, t1);
+
+      gp_Trsf t2;
+      t2.SetTranslation(gp_Vec(device->getPosition().getX().toMm(),
+                               device->getPosition().getY().toMm(), 0.8));
+      BRepBuilderAPI_Transform tt2(tt1.Shape(), t2);
+
+      Handle(AIS_Shape) aaa = new AIS_Shape(tt2.Shape());
+      aaa->SetColor(Quantity_NOC_GRAY);
+      view.getContext()->Display(aaa, Standard_True);
+    }
+
     foreach (const BI_FootprintPad* pad, device->getFootprint().getPads()) {
       if (pad->getLibPad().getBoardSide() ==
           library::FootprintPad::BoardSide::THT) {
@@ -278,20 +319,20 @@ void BoardShape3D::addToView(OpenCascadeView& view) noexcept {
     }
   }
 
-  auto app = XCAFApp_Application::GetApplication();
-  Handle(TDocStd_Document) doc;
-  app->NewDocument("MDTV-XCAF", doc);
-  auto assy       = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
-  auto assy_label = assy->NewShape();
-  BRepBuilderAPI::Precision(1.0e-6);
-
-  assy->AddShape(aResComp);
-
-  STEPCAFControl_Writer aWriter;
-  aWriter.SetColorMode(Standard_True);
-  aWriter.SetNameMode(Standard_True);
-  aWriter.Transfer(doc, STEPControl_AsIs);
-  aWriter.Write("/home/urban/test.stp");
+  // auto app = XCAFApp_Application::GetApplication();
+  // Handle(TDocStd_Document) doc;
+  // app->NewDocument("MDTV-XCAF", doc);
+  // auto assy       = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
+  // auto assy_label = assy->NewShape();
+  // BRepBuilderAPI::Precision(1.0e-6);
+  //
+  // assy->AddShape(aResComp);
+  //
+  // STEPCAFControl_Writer aWriter;
+  // aWriter.SetColorMode(Standard_True);
+  // aWriter.SetNameMode(Standard_True);
+  // aWriter.Transfer(doc, STEPControl_AsIs);
+  // aWriter.Write("/home/urban/test.stp");
 }
 
 /*******************************************************************************
