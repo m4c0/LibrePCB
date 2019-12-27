@@ -10,7 +10,7 @@ TARGET = librepcbproject
 # Use common project definitions
 include(../../../common.pri)
 
-QT += core widgets xml sql printsupport
+QT += core widgets opengl xml sql printsupport
 
 CONFIG += staticlib
 
@@ -18,11 +18,13 @@ INCLUDEPATH += \
     ../../ \
     ../../type_safe/include \
     ../../type_safe/external/debug_assert \
+    /usr/include/oce \
 
 RESOURCES += \
     ../../../img/images.qrc \
 
 SOURCES += \
+    boards/3d/boardshape3d.cpp \
     boards/board.cpp \
     boards/boardairwiresbuilder.cpp \
     boards/boardfabricationoutputsettings.cpp \
@@ -144,6 +146,7 @@ SOURCES += \
     settings/projectsettings.cpp \
 
 HEADERS += \
+    boards/3d/boardshape3d.h \
     boards/board.h \
     boards/boardairwiresbuilder.h \
     boards/boardfabricationoutputsettings.h \

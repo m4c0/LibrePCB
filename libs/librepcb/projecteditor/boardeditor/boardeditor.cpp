@@ -22,6 +22,7 @@
  ******************************************************************************/
 #include "boardeditor.h"
 
+#include "../boardviewer/boardviewer.h"
 #include "../dialogs/bomgeneratordialog.h"
 #include "../dialogs/projectpropertieseditordialog.h"
 #include "../docks/ercmsgdock.h"
@@ -36,37 +37,6 @@
 #include "ui_boardeditor.h"
 #include "unplacedcomponentsdock.h"
 
-#include <AIS_Shape.hxx>
-#include <BRepAlgoAPI_Common.hxx>
-#include <BRepAlgoAPI_Cut.hxx>
-#include <BRepAlgoAPI_Fuse.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
-#include <BRepBuilderAPI_MakePolygon.hxx>
-#include <BRepBuilderAPI_MakeVertex.hxx>
-#include <BRepBuilderAPI_MakeWire.hxx>
-#include <BRepBuilderAPI_Transform.hxx>
-#include <BRepFilletAPI_MakeChamfer.hxx>
-#include <BRepFilletAPI_MakeFillet.hxx>
-#include <BRepOffsetAPI_MakePipe.hxx>
-#include <BRepOffsetAPI_ThruSections.hxx>
-#include <BRepPrimAPI_MakeBox.hxx>
-#include <BRepPrimAPI_MakeCone.hxx>
-#include <BRepPrimAPI_MakeCylinder.hxx>
-#include <BRepPrimAPI_MakePrism.hxx>
-#include <BRepPrimAPI_MakeRevol.hxx>
-#include <BRepPrimAPI_MakeSphere.hxx>
-#include <BRepPrimAPI_MakeTorus.hxx>
-#include <GCE2d_MakeSegment.hxx>
-#include <Geom_ConicalSurface.hxx>
-#include <Geom_CylindricalSurface.hxx>
-#include <Geom_ToroidalSurface.hxx>
-#include <TColgp_Array1OfPnt2d.hxx>
-#include <TopExp_Explorer.hxx>
-#include <gp_Circ.hxx>
-#include <gp_Elips.hxx>
-#include <gp_Lin2d.hxx>
-#include <gp_Pln.hxx>
 #include <librepcb/common/application.h>
 #include <librepcb/common/dialogs/aboutdialog.h>
 #include <librepcb/common/dialogs/boarddesignrulesdialog.h>
@@ -86,7 +56,6 @@
 #include <librepcb/project/boards/cmd/cmdboardadd.h>
 #include <librepcb/project/boards/cmd/cmdboarddesignrulesmodify.h>
 #include <librepcb/project/boards/cmd/cmdboardremove.h>
-#include <librepcb/project/boards/drc/boardclipperpathgenerator.h>
 #include <librepcb/project/boards/items/bi_netline.h>
 #include <librepcb/project/boards/items/bi_netsegment.h>
 #include <librepcb/project/boards/items/bi_plane.h>
@@ -103,10 +72,6 @@
 #include <QtPrintSupport>
 #include <QtWidgets>
 
-#include <BRepLib.hxx>
-#include <TopExp.hxx>
-#include <TopoDS.hxx>
-
 /*******************************************************************************
  *  Namespace
  ******************************************************************************/
@@ -117,16 +82,6 @@ namespace editor {
 /*******************************************************************************
  *  Constructors / Destructor
  ******************************************************************************/
-
-TopoDS_Wire clipperPathToPolygon(const ClipperLib::Path& path,
-                                 const Length&           z) {
-  BRepBuilderAPI_MakePolygon aPolygon;
-  for (const ClipperLib::IntPoint& point : path) {
-    aPolygon.Add(gp_Pnt(point.X / 1e6, point.Y / 1e6, z.toMm()));
-  }
-  aPolygon.Close();
-  return aPolygon.Wire();
-}
 
 BoardEditor::BoardEditor(ProjectEditor& projectEditor, Project& project)
   : QMainWindow(0),
@@ -318,57 +273,6 @@ BoardEditor::BoardEditor(ProjectEditor& projectEditor, Project& project)
 #else
   QTimer::singleShot(200, mGraphicsView, SLOT(zoomAll()));
 #endif
-
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  Board*           board = mProject.getBoardByIndex(0);
-  OpenCascadeView* v     = new OpenCascadeView();
-  v->show();
-
-  // outlines
-  {
-    BoardClipperPathGenerator gen(*board, PositiveLength(5000));
-    gen.addBoardOutline();
-    for (const ClipperLib::Path& path : gen.getPaths()) {
-      TopoDS_Face face = BRepBuilderAPI_MakeFace(
-          clipperPathToPolygon(path, Length::fromMm(-0.8)));
-      TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 1.6));
-      Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
-      anAisSolid->SetColor(Quantity_NOC_DARKGREEN);
-      v->getContext()->Display(anAisSolid, Standard_True);
-    }
-  }
-
-  // traces top
-  QList<NetSignal*> netsignals = mProject.getCircuit().getNetSignals().values();
-  netsignals.append(nullptr);
-  foreach (const NetSignal* netsignal, netsignals) {
-    BoardClipperPathGenerator gen(*board, PositiveLength(5000));
-    gen.addCopper(GraphicsLayer::sTopCopper, netsignal);
-    for (const ClipperLib::Path& path : gen.getPaths()) {
-      TopoDS_Face face = BRepBuilderAPI_MakeFace(
-          clipperPathToPolygon(path, Length::fromMm(0.8)));
-      TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, 0.035));
-      Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
-      anAisSolid->SetColor(Quantity_NOC_GOLD);
-      v->getContext()->Display(anAisSolid, Standard_True);
-    }
-  }
-
-  // traces bottom
-  foreach (const NetSignal* netsignal, netsignals) {
-    BoardClipperPathGenerator gen(*board, PositiveLength(5000));
-    gen.addCopper(GraphicsLayer::sBotCopper, netsignal);
-    for (const ClipperLib::Path& path : gen.getPaths()) {
-      TopoDS_Face face = BRepBuilderAPI_MakeFace(
-          clipperPathToPolygon(path, Length::fromMm(-0.8)));
-      TopoDS_Shape shape = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, -0.035));
-      Handle(AIS_Shape) anAisSolid = new AIS_Shape(shape);
-      anAisSolid->SetColor(Quantity_NOC_GOLD);
-      v->getContext()->Display(anAisSolid, Standard_True);
-    }
-  }
 }
 
 BoardEditor::~BoardEditor() {
@@ -743,6 +647,15 @@ void BoardEditor::on_actionHideAllPlanes_triggered() {
     foreach (BI_Plane* plane, board->getPlanes()) {
       plane->setVisible(false);  // No undo command needed since it is not saved
     }
+  }
+}
+
+void BoardEditor::on_actionOpen3DViewer_triggered() {
+  if (Board* board = getActiveBoard()) {
+    BoardViewer* viewer = new BoardViewer(*board);
+    viewer->show();
+    viewer->raise();
+    viewer->activateWindow();
   }
 }
 

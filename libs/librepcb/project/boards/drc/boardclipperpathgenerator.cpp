@@ -167,7 +167,7 @@ void BoardClipperPathGenerator::addCopper(const QString&   layerName,
   }
 
   // planes
-  //foreach (const BI_Plane* plane, mBoard.getPlanes()) {
+  // foreach (const BI_Plane* plane, mBoard.getPlanes()) {
   //  if ((plane->getLayerName() != layerName) ||
   //      (&plane->getNetSignal() != netsignal)) {
   //    continue;

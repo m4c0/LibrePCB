@@ -63,6 +63,8 @@ public:
 
   const Handle(AIS_InteractiveContext)& getContext() const;
 
+  void init(void);
+
   // Operator Overloadings
   OpenCascadeView& operator=(const OpenCascadeView& rhs) = delete;
 
@@ -102,7 +104,6 @@ protected:
     virtual void addItemInPopup(QMenu* theMenu);
 
 protected:
-    void init(void);
     void popup(const int x, const int y);
     void dragEvent(const int x, const int y);
     void inputEvent(const int x, const int y);

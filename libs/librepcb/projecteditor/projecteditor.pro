@@ -46,6 +46,7 @@ SOURCES += \
     boardeditor/fsm/bes_select.cpp \
     boardeditor/fsm/boardeditorevent.cpp \
     boardeditor/unplacedcomponentsdock.cpp \
+    boardviewer/boardviewer.cpp \
     cmd/cmdaddcomponenttocircuit.cpp \
     cmd/cmdadddevicetoboard.cpp \
     cmd/cmdaddsymboltoschematic.cpp \
@@ -111,6 +112,7 @@ HEADERS += \
     boardeditor/fsm/bes_select.h \
     boardeditor/fsm/boardeditorevent.h \
     boardeditor/unplacedcomponentsdock.h \
+    boardviewer/boardviewer.h \
     cmd/cmdaddcomponenttocircuit.h \
     cmd/cmdadddevicetoboard.h \
     cmd/cmdaddsymboltoschematic.h \
@@ -165,6 +167,7 @@ FORMS += \
     boardeditor/deviceinstancepropertiesdialog.ui \
     boardeditor/fabricationoutputdialog.ui \
     boardeditor/unplacedcomponentsdock.ui \
+    boardviewer/boardviewer.ui \
     dialogs/addcomponentdialog.ui \
     dialogs/bomgeneratordialog.ui \
     dialogs/editnetclassesdialog.ui \

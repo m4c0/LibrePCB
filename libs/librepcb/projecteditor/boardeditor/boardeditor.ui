@@ -277,6 +277,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionGrid"/>
+   <addaction name="actionOpen3DViewer"/>
   </widget>
   <action name="actionProjectSave">
    <property name="icon">
@@ -790,6 +791,11 @@
    </property>
    <property name="text">
     <string>Generate Pick&amp;&amp;Place Files</string>
+   </property>
+  </action>
+  <action name="actionOpen3DViewer">
+   <property name="text">
+    <string>Open 3D Viewer</string>
    </property>
   </action>
  </widget>

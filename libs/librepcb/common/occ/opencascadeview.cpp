@@ -79,8 +79,6 @@ OpenCascadeView::OpenCascadeView(QWidget* parent) noexcept
 
   // Enable the mouse tracking, by default the mouse tracking is disabled.
   setMouseTracking(true);
-
-  init();
 }
 
 OpenCascadeView::~OpenCascadeView() noexcept {
@@ -214,6 +212,10 @@ void OpenCascadeView::onLButtonDown(const int theFlags, const QPoint thePoint) {
   myYmin = thePoint.y();
   myXmax = thePoint.x();
   myYmax = thePoint.y();
+
+  if (myCurrentMode == CurAction3d_DynamicRotation) {
+    myView->StartRotation(thePoint.x(), thePoint.y());
+  }
 }
 
 void OpenCascadeView::onMButtonDown(const int theFlags, const QPoint thePoint) {
@@ -222,10 +224,6 @@ void OpenCascadeView::onMButtonDown(const int theFlags, const QPoint thePoint) {
   myYmin = thePoint.y();
   myXmax = thePoint.x();
   myYmax = thePoint.y();
-
-  if (myCurrentMode == CurAction3d_DynamicRotation) {
-    myView->StartRotation(thePoint.x(), thePoint.y());
-  }
 }
 
 void OpenCascadeView::onRButtonDown(const int theFlags, const QPoint thePoint) {
@@ -283,42 +281,23 @@ void OpenCascadeView::onRButtonUp(const int theFlags, const QPoint thePoint) {
 
 void OpenCascadeView::onMouseMove(const int theFlags, const QPoint thePoint) {
   // Draw the rubber band.
+  // drawRubberBand(myXmin, myYmin, thePoint.x(), thePoint.y());
+  //
+  // dragEvent(thePoint.x(), thePoint.y());
+
+  // Ctrl for multi selection.
+  // if (theFlags & Qt::ControlModifier) {
+  //  multiMoveEvent(thePoint.x(), thePoint.y());
+  //} else {
+  //  moveEvent(thePoint.x(), thePoint.y());
+  //}
+
   if (theFlags & Qt::LeftButton) {
-    //drawRubberBand(myXmin, myYmin, thePoint.x(), thePoint.y());
-    //
-    //dragEvent(thePoint.x(), thePoint.y());
+    myView->Rotation(thePoint.x(), thePoint.y());
+  } else if (theFlags & Qt::MidButton) {
     myView->Pan(thePoint.x() - myXmax, myYmax - thePoint.y());
     myXmax = thePoint.x();
     myYmax = thePoint.y();
-  }
-
-  // Ctrl for multi selection.
-  if (theFlags & Qt::ControlModifier) {
-    multiMoveEvent(thePoint.x(), thePoint.y());
-  } else {
-    moveEvent(thePoint.x(), thePoint.y());
-  }
-
-  // Middle button.
-  if (theFlags & Qt::MidButton) {
-    switch (myCurrentMode) {
-      case CurAction3d_DynamicRotation:
-        myView->Rotation(thePoint.x(), thePoint.y());
-        break;
-
-      case CurAction3d_DynamicZooming:
-        myView->Zoom(myXmin, myYmin, thePoint.x(), thePoint.y());
-        break;
-
-      case CurAction3d_DynamicPanning:
-        myView->Pan(thePoint.x() - myXmax, myYmax - thePoint.y());
-        myXmax = thePoint.x();
-        myYmax = thePoint.y();
-        break;
-
-      default:
-        break;
-    }
   }
 }
 
