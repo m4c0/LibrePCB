@@ -31,15 +31,21 @@
 namespace librepcb {
 
 /*******************************************************************************
+ *  Static Members
+ ******************************************************************************/
+
+// Initialize validation regex
+const QRegularExpression Uuid::mValidationRe(
+    "\\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\z");
+
+/*******************************************************************************
  *  Static Methods
  ******************************************************************************/
 
 bool Uuid::isValid(const QString& str) noexcept {
   // check format of string (only accept EXACT matches!)
-  QRegularExpression re(
-      "\\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\z");
-  QRegularExpressionMatch match =
-      re.match(str, 0, QRegularExpression::PartialPreferCompleteMatch);
+  QRegularExpressionMatch match = mValidationRe.match(
+      str, 0, QRegularExpression::PartialPreferCompleteMatch);
   if (!match.hasMatch()) return false;
 
   // check type of uuid

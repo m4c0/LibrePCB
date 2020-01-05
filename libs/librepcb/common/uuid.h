@@ -158,6 +158,11 @@ private:  // Methods
 
 private:          // Data
   QString mUuid;  ///< Guaranteed to always contain a valid UUID
+
+  /**
+   * @brief mRe Regular expression for validating UUIDs.
+   */
+  static const QRegularExpression mValidationRe;
 };
 
 /*******************************************************************************
